@@ -5,6 +5,7 @@ import { cppScopeSupport } from "./cpp";
 import { csharpScopeSupport } from "./csharp";
 import { cssScopeSupport } from "./css";
 import { dartScopeSupport } from "./dart";
+import { gdscriptScopeSupport } from "./gdscript";
 import { goScopeSupport } from "./go";
 import { htmlScopeSupport } from "./html";
 import { javaScopeSupport } from "./java";
@@ -40,6 +41,7 @@ export const languageScopeSupport: StringRecord<LanguageScopeSupportFacetMap> =
     css: cssScopeSupport,
     dart: dartScopeSupport,
     go: goScopeSupport,
+    gdscript: gdscriptScopeSupport,
     html: htmlScopeSupport,
     java: javaScopeSupport,
     javascript: javascriptScopeSupport,
