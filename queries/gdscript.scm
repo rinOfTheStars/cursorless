@@ -2,26 +2,6 @@
 ;; https://github.com/PrestonKnopp/tree-sitter-gdscript/blob/master/src/node-types.json
 
 [
-    (array)
-    (base_call)
-    (binary_operator)
-    (call)
-    (dictionary)
-    (false)
-    (float)
-    (get_node)
-    (identifier)
-    (integer)
-    (node_path)
-    (null)
-    (parenthesized_expression)
-    (string)
-    (subscript)
-    (true)
-    (unary_operator)
-] @_attribute_expression
-
-[
     (class_definition)
     (constructor_definition)
     (enum_definition)
@@ -30,44 +10,25 @@
     (if_statement)
     (match_statement)
     (while_statement)
-] @_compound_statement
+    (break_statement)
+    (class_name_statement)
+    (const_statement)
+    (continue_statement)
+    (export_variable_statement)
+    (expression_statement)
+    (extends_statement)
+    (onready_variable_statement)
+    (pass_statement)
+    (return_statement)
+    (signal_statement)
+    (variable_statement)
+    ;; (breakpoint_statement) not sure if this should count
+] @statement
 
 [
-    (_primary_expression)
-    (await_expression)
-    (conditional_expression)
-] @_expression
-
-[
-    (default_parameter)
-    (identifier)
-    (typed_default_parameter)
-    (typed_parameter)
-] @_parameters
-
-[
-    (_primary_expression)
-    (pattern_binding)
-] @_pattern
-
-[
-    (array)
-    (attribute)
+    (attribute_call)
     (base_call)
-    (binary_operator)
     (call)
-    (dictionary)
-    (false)
-    (float)
-    (get_node)
-    (identifier)
-    (integer)
-    (node_path)
-    (null)
-    (parenthesized_expression)
-    (string)
-    (string_name)
-    (subscript)
-    (true)
-    (unary_operator)
-] @_primary_expression
+] @functionCall @functionCallee
+
+(lambda) @anonymousFunction
