@@ -4,7 +4,7 @@
 
 ;; import javascript.core.scm
 
-;;!! class Aaa { bbb(); }
+;;!! class Foo { bar(); }
 ;;!              ^^^^^^
 (_
   (method_signature) @statement.start
@@ -12,65 +12,98 @@
   ";"? @statement.end
 )
 
-;;!! function aaa(bbb = "ddd") {}
-;;!               ^^^--------
+;;!! function foo(aaa = 0) {}
+;;!               ^^^----
 (required_parameter
-  (identifier) @_.leading.endOf
+  (identifier) @value.leading.endOf
   value: (_) @value
   !type
 ) @_.domain
 
-;;!! function aaa(bbb: Ccc = "ddd") {}
-;;!               ^^^-------------
+;;!! function foo(aaa: number = 0) {}
+;;!               ^^^------------
 (required_parameter
-  type: (_) @_.leading.endOf
+  type: (_) @value.leading.endOf
   value: (_) @value
 ) @_.domain
 
-;;!! function aaa(bbb?: Ccc = "ddd") {}
+;;!! function foo(aaa?: Ccc = "ddd") {}
 ;;!               ^^^--------------
 (optional_parameter
-  type: (_) @_.leading.endOf
+  type: (_) @value.leading.endOf
   value: (_) @value
 ) @_.domain
 
-;;!! enum Aaa {}
-;;!  ^^^^^^^^^^^
-(enum_declaration) @type
+;;!! enum Foo { }
+;;!  ^^^^^^^^^^^^
+;;!            ^
+(enum_declaration
+  (enum_body
+    "{" @interior.start.endOf @name.iteration.start.endOf @value.iteration.start.endOf
+    "}" @interior.end.startOf @name.iteration.end.startOf @value.iteration.end.startOf
+  )
+) @type @interior.domain
 
-;;!! function aaa(bbb: Ccc = "ddd") {}
-;;!               ^^^-------------
+;;!! enum Foo { aaa, bbb }
+;;!             ^^^  ^^^
+(enum_body
+  name: (_) @name
+)
+
+;;!! enum Foo { aaa = 0, bbb = 1 }
+;;!             ^^^      ^^^
+;;!                   ^        ^
+(enum_assignment
+  name: (_) @name @value.leading.endOf
+  value: (_) @value
+) @_.domain
+
+;;!! function foo(aaa: number = 0) {}
+;;!               ^^^------------
 (required_parameter
   (identifier) @name
 ) @_.domain
 
-;;!! function aaa(bbb?: Ccc) {}
-;;!               ^^^------
+;;!! function foo(aaa?: number) {}
+;;!               ^^^---------
 (optional_parameter
   (identifier) @name
 ) @_.domain
+
+;;!! function foo(...aaa: number[]) {}
+;;!                  ^^^
+(_
+  (rest_pattern
+    (identifier) @name
+  )
+) @_.domain
+
+(
+  ;;!! function foo();
+  ;;!  ^^^^^^^^^^^^^^^
+  (function_signature) @namedFunction
+  (#not-parent-type? @namedFunction export_statement)
+)
+
+(export_statement
+  (function_signature)
+) @namedFunction
 
 ;; Define these here because these node types don't exist in javascript.
 (_
   [
-    ;;!! function foo();
-    ;;!  ^^^^^^^^^^^^^^^
-    (function_signature
-      name: (_) @functionName @name
-    )
-
     ;;!! class Foo { foo() {} }
     ;;!              ^^^^^^^^
     ;;!! interface Foo { foo(): void; }
     ;;!                  ^^^^^^^^^^^^
     (method_signature
-      name: (_) @functionName @name
+      name: (_) @name
     )
 
     ;;!! class Foo { abstract foo(): void; }
     ;;!              ^^^^^^^^^^^^^^^^^^^^^
     (abstract_method_signature
-      name: (_) @functionName @name
+      name: (_) @name
     )
 
     ;;!! class Foo {
@@ -82,7 +115,6 @@
     ;;!                                   ^^^^^^^^^^^^^^^^^^^^^^
     ;;!! }
     (public_field_definition
-      name: (_) @functionName
       value: [
         (function_expression
           !name
@@ -93,9 +125,9 @@
         (arrow_function)
       ]
     )
-  ] @namedFunction.start @functionName.domain.start @name.domain.start
+  ] @namedFunction.start @name.domain.start
   .
-  ";"? @namedFunction.end @functionName.domain.end @name.domain.end
+  ";"? @namedFunction.end @name.domain.end
 )
 
 (_
@@ -140,7 +172,7 @@
 [
   (interface_declaration)
   (object_type)
-] @namedFunction.iteration @functionName.iteration
+] @namedFunction.iteration
 
 ;; Special cases for `(let | const | var) foo = ...;` because the full statement
 ;; is actually a grandparent of the `name` node, so we want the domain to include
@@ -299,6 +331,25 @@
   (_) @type
 )
 
+;;!! catch(error: unknown) {}
+;;!        ^^^^^^^^^^^^^^
+(catch_clause
+  parameter: (_) @argumentOrParameter.start
+  type: (_
+    (_) @argumentOrParameter.end
+  )?
+)
+
+;;!! catch(error: unknown) {}
+;;!        ^^^^^
+;;!               ^^^^^^^
+(catch_clause
+  parameter: (_) @name @type.leading.endOf @_.domain.start
+  type: (_
+    (_) @type @_.domain.end
+  )?
+)
+
 ;;!! interface Aaa {}
 ;;!! type Aaa = Bbb;
 (
@@ -351,26 +402,15 @@
 ;;!! abstract class MyClass {}
 ;;!  ^^^^^^^^^^^^^^^^^^^^^^^^^
 (
-  (abstract_class_declaration
-    name: (_) @className
-  ) @class @type @_.domain
+  (abstract_class_declaration) @class @type
   (#not-parent-type? @class export_statement)
 )
 
 ;;!! export abstract class MyClass {}
 ;;!  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 (export_statement
-  (abstract_class_declaration
-    name: (_) @className
-  )
-) @class @type @_.domain
-
-;;!! class MyClass {}
-;;!        ^^^^^^^
-;;!  ----------------
-(abstract_class_declaration
-  name: (_) @name
-) @_.domain
+  (abstract_class_declaration)
+) @class @type
 
 ;;!! interface Type { name: string; }
 ;;!                   ^^^^
@@ -378,7 +418,7 @@
 ;;!                   ------------
 (_
   (property_signature
-    name: (_) @collectionKey @type.leading.endOf
+    name: (_) @name @collectionKey @type.leading.endOf
     type: (_
       ":"
       (_) @type @collectionKey.trailing.startOf
@@ -422,11 +462,4 @@
 ;; () => number
 (function_type
   "=>" @disqualifyDelimiter
-)
-
-;;!! class Aaa { }
-;;!             ^
-(class_body
-  "{" @type.iteration.start.endOf
-  "}" @type.iteration.end.startOf
 )

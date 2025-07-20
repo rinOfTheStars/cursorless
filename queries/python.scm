@@ -8,28 +8,30 @@
 [
   (assert_statement)
   (break_statement)
-  (class_definition)
   (continue_statement)
   (decorated_definition)
   (delete_statement)
   (exec_statement)
   (expression_statement)
   (for_statement)
-  (function_definition)
   (future_import_statement)
   (global_statement)
-  (if_statement)
   (import_from_statement)
   (import_statement)
   (match_statement)
   (nonlocal_statement)
-  (pass_statement)
   (print_statement)
   (raise_statement)
   (return_statement)
   (try_statement)
   (while_statement)
   (with_statement)
+  ;; Disabled on purpose. We don't think this is a statement.
+  ;; (pass_statement)
+  ;; Disabled on purpose. We have a better definition for these below.
+  ;; (class_definition)
+  ;; (function_definition)
+  ;; (if_statement)
 ] @statement
 
 ;;!! a = 25
@@ -72,6 +74,7 @@
 
 (_
   name: (_) @name
+  (#not-parent-type? @name function_definition class_definition)
 ) @_.domain
 
 ;;!! def aaa(bbb):
@@ -122,18 +125,6 @@
     "]" @type.iteration.end.startOf
   )
 )
-
-;;!!  def aaa() -> str:
-;;!                ^^^
-;;!            xxxxxxx
-;;!  [-----------------
-;;!!      pass
-;;!   --------]
-(function_definition
-  (_) @_.leading.endOf
-  .
-  return_type: (_) @type
-) @_.domain
 
 ;;!! d = {"a": 1234}
 ;;!            ^^^^
@@ -261,8 +252,8 @@
 )
 
 (with_statement
-  (with_clause) @value.iteration @name.iteration
-) @value.iteration.domain @name.iteration.domain
+  (with_clause) @name.iteration @value.iteration
+) @name.iteration.domain @value.iteration.domain
 
 ;;!! lambda str: len(str) > 0
 ;;!              ^^^^^^^^^^^^
@@ -302,73 +293,80 @@
   (set)
 ] @list
 
+;;!! def foo(): pass
+;;!  ^^^^^^^^^^^^^^^
 (
   (function_definition
-    name: (_) @functionName
+    name: (_) @name
     body: (_) @interior
-  ) @namedFunction @functionName.domain @interior.domain
+  ) @namedFunction @statement @_.domain
   (#not-parent-type? @namedFunction decorated_definition)
 )
+
+;;!! @value def foo(): pass
+;;!  ^^^^^^^^^^^^^^^^^^^^^^
 (decorated_definition
   (function_definition
-    name: (_) @functionName
+    name: (_) @name
     body: (_) @interior
   )
-) @namedFunction @functionName.domain @interior.domain
+) @namedFunction @_.domain
+
+;;!!  def aaa() -> str:
+;;!                ^^^
+;;!            xxxxxxx
+;;!  [-----------------
+;;!!      pass
+;;!   --------]
+(function_definition
+  (_) @_.leading.endOf
+  .
+  return_type: (_) @type
+) @_.domain
 
 ;;!! class MyClass:
 (
-  (class_definition
-    name: (_) @className
-    body: (_) @interior
-  ) @class @className.domain @interior.domain
+  (class_definition) @class @type @statement
   (#not-parent-type? @class decorated_definition)
 )
 
 (
-  (class_definition) @type
-  (#not-parent-type? @type decorated_definition)
+  (class_definition
+    name: (_) @name
+    body: (_) @interior
+  ) @_.domain
+  (#not-parent-type? @_.domain decorated_definition)
 )
 
 ;;!! @value
 ;;!! class MyClass:
 (decorated_definition
-  (class_definition
-    name: (_) @className
-    body: (_) @interior
-  )
-) @class @className.domain @interior.domain
+  (class_definition)
+) @class @type @statement
 
 (decorated_definition
-  (class_definition)
-) @type
+  (class_definition
+    name: (_) @name
+    body: (_) @interior
+  )
+) @_.domain
 
 (
-  (module) @class.iteration @className.iteration
-  (#document-range! @class.iteration @className.iteration)
-)
-
-(
-  (module) @statement.iteration
-  (#document-range! @statement.iteration)
+  (module) @statement.iteration @class.iteration @namedFunction.iteration
+  (#document-range! @statement.iteration @class.iteration @namedFunction.iteration)
 )
 
 ;; This is a hack to handle the case where the entire document is a `with` statement
 (
   (module
     (_) @_statement
-  ) @value.iteration @name.iteration
+  ) @name.iteration @value.iteration @type.iteration
   (#not-type? @_statement "with_statement")
-  (#document-range! @value.iteration @name.iteration)
-)
-
-(
-  (module) @namedFunction.iteration @functionName.iteration
-  (#document-range! @namedFunction.iteration @functionName.iteration)
+  (#document-range! @name.iteration @value.iteration @type.iteration)
 )
 
 (class_definition
-  body: (_) @namedFunction.iteration @functionName.iteration
+  body: (_) @namedFunction.iteration @name.iteration
 )
 
 ;;!! def foo():
@@ -378,8 +376,8 @@
 ;;!      *****
 ;;!!     c = 2
 ;;!      *****>
-(block) @statement.iteration @value.iteration @name.iteration
-(block) @type.iteration
+(block) @name.iteration @value.iteration @type.iteration
+(block) @statement.iteration
 
 ;;!! {"a": 1, "b": 2, "c": 3}
 ;;!   **********************
@@ -395,10 +393,6 @@
   ")" @value.iteration.end.startOf @name.iteration.end.startOf @type.iteration.end.startOf
 )
 
-;;!! if true: pass
-;;!  ^^^^^^^^^^^^^
-(if_statement) @ifStatement
-
 ;;!! foo()
 ;;!  ^^^^^
 (call) @functionCall
@@ -409,16 +403,10 @@
   function: (_) @functionCallee
 ) @_.domain
 
-;;!! lambda _: pass
-;;!  ^^^^^^^^^^^^^^
-(lambda
-  body: (_) @interior
-) @anonymousFunction @interior.domain
-
 ;;!! match value:
 ;;!        ^^^^^
 (match_statement
-  subject: (_) @private.switchStatementSubject
+  subject: (_) @value
   body: (_) @interior
 ) @_.domain
 
@@ -507,11 +495,34 @@
   (#not-parent-type? @_.removal case_clause)
 ) @_.domain
 
+;;!! if true: pass else: pass
+;;!  ^^^^^^^^^^^^^^^^^^^^^^^^
+(if_statement) @ifStatement @statement @branch.iteration
+
 ;;!! if True: pass
 ;;!  ^^^^^^^^^^^^^
 (if_statement
-  "if" @branch.start @interior.domain.start
-  consequence: (_) @branch.end @interior @interior.domain.end
+  "if" @interior.domain.start
+  consequence: (_) @interior @interior.domain.end
+)
+
+;;!! if True: pass
+;;!  ^^^^^^^^^^^^^
+(if_statement
+  "if" @branch.start @branch.removal.start
+  consequence: (_) @branch.end @branch.removal.end
+  alternative: (else_clause)? @branch.removal.end.startOf
+)
+
+;;!! if True: pass elif False: pass
+;;!  ^^^^^^^^^^^^^
+(if_statement
+  "if" @branch.start @branch.removal.start
+  consequence: (_) @branch.end @branch.removal.end
+  alternative: (elif_clause
+    "elif" @branch.removal.end.startOf
+    (#character-range! @branch.removal.end.startOf 2)
+  )
 )
 
 ;;!! elif True: pass
@@ -525,8 +536,6 @@
 (else_clause
   body: (_) @interior
 ) @branch @interior.domain
-
-(if_statement) @branch.iteration
 
 ;;!! try: pass
 ;;!  ^^^^^^^^^
@@ -546,6 +555,17 @@
 (except_group_clause
   (block) @interior
 ) @branch @interior.domain
+
+;;!! except Exception as ex:
+;;!         ^^^^^^^^^^^^^^^
+;;!         ^^^^^^^^^
+;;!                      ^^
+(except_clause
+  (as_pattern
+    (_) @type
+    alias: (_) @name
+  ) @argumentOrParameter @_.domain
+)
 
 ;;!! finally: pass
 ;;!  ^^^^^^^^^^^^^
@@ -697,6 +717,10 @@
   (#child-range! @argumentList 1 -2)
 ) @argumentList.domain @argumentOrParameter.iteration.domain
 
+;;!! lambda _: pass
+;;!  ^^^^^^^^^^^^^^
+(lambda) @anonymousFunction
+
 ;;!! lambda a, b: pass
 ;;!         ^^^^
 (lambda
@@ -740,7 +764,7 @@
 (argument_list
   "(" @name.iteration.start.endOf @value.iteration.start.endOf
   ")" @name.iteration.end.startOf @value.iteration.end.startOf
-) @name.iteration.domain @value.iteration.domain
+)
 
 operators: [
   "<"
@@ -748,12 +772,14 @@ operators: [
   ">"
   ">="
 ] @disqualifyDelimiter
+
 operator: [
   "<<"
   "<<="
   ">>"
   ">>="
 ] @disqualifyDelimiter
+
 (function_definition
   "->" @disqualifyDelimiter
 )

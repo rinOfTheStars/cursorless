@@ -34,7 +34,10 @@
 
 ;;!! if v < 0 {}
 ;;!  ^^^^^^^^^^^
-(if_expression) @ifStatement
+(
+  (if_expression) @ifStatement @statement
+  (#not-parent-type? @ifStatement else_clause)
+)
 
 ;;!! if let Some(i) = number {}
 ;;!  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,10 +99,10 @@
 
 [
   (struct_item
-    name: (_) @className @name
+    name: (_) @name
   )
   (enum_item
-    name: (_) @className @name
+    name: (_) @name
   )
 ] @class @_.domain
 
@@ -110,14 +113,14 @@
 ) @_.domain
 
 (trait_item
-  name: (_) @className @name
+  name: (_) @name
 ) @_.domain
 
 ;;!! fn foo() {}
 ;;!  ^^^^^^^^^^^
 (function_item
-  name: (_) @functionName @name
-) @namedFunction @_.domain
+  name: (_) @name
+) @namedFunction @name.domain
 
 ;;!! fn foo() -> int {}
 ;;!              ^^^
@@ -180,7 +183,7 @@
 ] @list
 
 (match_expression
-  value: (_) @private.switchStatementSubject
+  value: (_) @value
 ) @_.domain
 
 ;;!! #[derive(Debug)]

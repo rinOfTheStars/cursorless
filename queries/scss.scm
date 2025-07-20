@@ -46,7 +46,7 @@
   (if_clause
     (condition) @condition
   )
-) @ifStatement @branch.iteration @condition.domain
+) @ifStatement @condition.domain @branch.iteration
 
 ;;!! @if true { }  @else if false { }
 ;;!   xxxxxxxxxxxxxxxxxxx
@@ -77,12 +77,12 @@
 (else_clause) @branch
 
 (mixin_statement
-  (name) @functionName @name
-) @namedFunction @functionName.domain @name.domain
+  (name) @name
+) @namedFunction @name.domain
 
 (function_statement
-  (name) @functionName @name
-) @namedFunction @functionName.domain @name.domain
+  (name) @name
+) @namedFunction @name.domain
 
 (declaration
   (variable_name) @name
@@ -97,8 +97,8 @@
     (_) @argumentOrParameter
     .
     (_)? @_.trailing.startOf
-  )
-  (#insertion-delimiter! @argumentOrParameter ", ")
+  ) @_dummy
+  (#single-or-multi-line-delimiter! @argumentOrParameter @_dummy ", " ",\n")
 )
 
 (_
@@ -111,7 +111,7 @@
 (parameters
   "(" @name.iteration.start.endOf @value.iteration.start.endOf
   ")" @name.iteration.end.startOf @value.iteration.end.startOf
-) @name.iteration.domain @value.iteration.domain
+)
 
 ;;!! foo($foo: 123)
 ;;!      ^^^^  ^^^
@@ -124,13 +124,13 @@
 )
 
 (
-  (stylesheet) @namedFunction.iteration @functionName.iteration
-  (#document-range! @namedFunction.iteration @functionName.iteration)
+  (stylesheet) @namedFunction.iteration @name.iteration
+  (#document-range! @namedFunction.iteration @name.iteration)
 )
 
 (block
-  "{" @namedFunction.iteration.start.endOf @functionName.iteration.start.endOf
-  "}" @namedFunction.iteration.end.startOf @functionName.iteration.end.startOf
+  "{" @namedFunction.iteration.start.endOf @name.iteration.start.endOf
+  "}" @namedFunction.iteration.end.startOf @name.iteration.end.startOf
 )
 
 (binary_expression

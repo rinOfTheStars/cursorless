@@ -174,7 +174,6 @@ export const simpleScopeTypeTypes = [
   "sectionLevelFive",
   "sectionLevelSix",
   "selector",
-  "private.switchStatementSubject",
   "unit",
   "xmlBothTags",
   "xmlElement",
@@ -218,9 +217,17 @@ export function isSimpleScopeType(
 
 export type SimpleScopeTypeType = (typeof simpleScopeTypeTypes)[number];
 
+export const pseudoScopes = new Set<SimpleScopeTypeType>([
+  "instance",
+  "className",
+  "functionName",
+]);
+
 export interface SimpleScopeType {
   type: SimpleScopeTypeType;
 }
+
+export type ScopeTypeType = SimpleScopeTypeType | ScopeType["type"];
 
 export interface CustomRegexScopeType {
   type: "customRegex";
@@ -435,8 +442,8 @@ export interface ModifyIfUntypedModifier {
  * doesn't throw an error, returning the output from the first modifier not
  * throwing an error.
  */
-export interface CascadingModifier {
-  type: "cascading";
+export interface FallbackModifier {
+  type: "fallback";
 
   /**
    * The modifiers to try in turn
@@ -473,7 +480,7 @@ export type Modifier =
   | TrailingModifier
   | RawSelectionModifier
   | ModifyIfUntypedModifier
-  | CascadingModifier
+  | FallbackModifier
   | RangeModifier
   | KeepContentFilterModifier
   | KeepEmptyFilterModifier

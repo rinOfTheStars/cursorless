@@ -22,7 +22,6 @@
   (record_declaration)
   (struct_declaration)
   (using_directive)
-  (block)
   (break_statement)
   (checked_statement)
   (continue_statement)
@@ -33,7 +32,6 @@
   (for_each_statement)
   (for_statement)
   (goto_statement)
-  (if_statement)
   (labeled_statement)
   (local_declaration_statement)
   (local_function_statement)
@@ -46,25 +44,49 @@
   (using_statement)
   (while_statement)
   (yield_statement)
+  ;; Disabled on purpose. This is the entire body of statements.
+  ;; (block)
+  ;; Disabled on purpose. We have a better definition of this below.
+  ;; (if_statement)
 ] @statement
 
-(if_statement) @ifStatement
-
 (
-  (compilation_unit) @statement.iteration @class.iteration @className.iteration
-  (#document-range! @statement.iteration @class.iteration @className.iteration)
+  (compilation_unit) @statement.iteration @class.iteration @namedFunction.iteration
+  (#document-range! @statement.iteration @class.iteration @namedFunction.iteration)
 )
 
 (
-  (compilation_unit) @name.iteration @namedFunction.iteration @functionName.iteration
-  (#document-range! @name.iteration @namedFunction.iteration @functionName.iteration)
+  (compilation_unit) @name.iteration @value.iteration @type.iteration
+  (#document-range! @name.iteration @value.iteration @type.iteration)
 )
 
-(_
-  body: (_
-    "{" @statement.iteration.start.endOf
-    "}" @statement.iteration.end.startOf
-  )
+;;!! { }
+;;!   ^
+(block
+  "{" @name.iteration.start.endOf @value.iteration.start.endOf @type.iteration.start.endOf
+  "}" @name.iteration.end.startOf @value.iteration.end.startOf @type.iteration.end.startOf
+)
+
+(block
+  "{" @statement.iteration.start.endOf
+  "}" @statement.iteration.end.startOf
+)
+
+(
+  (_
+    (block
+      "{" @interior.start.endOf
+      "}" @interior.end.startOf
+    )
+  ) @_.domain
+  (#not-type? @_.domain try_statement if_statement)
+)
+
+;;!! if () {} else {}
+;;!  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(
+  (if_statement) @ifStatement @statement @branch.iteration
+  (#not-parent-type? @ifStatement if_statement)
 )
 
 ;;!! if () {}
@@ -73,10 +95,12 @@
   (if_statement
     condition: (_) @condition
     consequence: (_) @branch.end.endOf @branch.removal.end.endOf
-    alternative: (_)? @branch.removal.end.startOf
+    "else"? @branch.removal.end.startOf
+    alternative: (if_statement)? @branch.removal.end.startOf
   ) @branch.start.startOf @branch.removal.start.startOf @condition.domain
-  (#not-parent-type? @condition.domain "if_statement")
+  (#not-parent-type? @condition.domain if_statement)
 )
+
 (
   (if_statement
     consequence: (_
@@ -84,7 +108,7 @@
       "}" @interior.end.startOf
     ) @interior.domain.end.endOf
   ) @interior.domain.start.startOf
-  (#not-parent-type? @interior.domain.start.startOf "if_statement")
+  (#not-parent-type? @interior.domain.start.startOf if_statement)
 )
 
 ;;!! else if () {}
@@ -108,13 +132,6 @@
     "{" @interior.start.endOf
     "}" @interior.end.startOf
   ) @branch.end @interior.domain.end.endOf
-)
-
-;;!! if () {} else if () {} else {}
-;;!  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-(
-  (if_statement) @branch.iteration
-  (#not-parent-type? @branch.iteration "if_statement")
 )
 
 ;;!! try () {}
@@ -162,10 +179,12 @@
 ;;!         ^   ^
 (conditional_expression
   condition: (_) @condition @interior
-) @condition.domain
+) @condition.domain @branch.iteration
+
 (conditional_expression
   consequence: (_) @branch @interior
 )
+
 (conditional_expression
   alternative: (_) @branch @interior
 )
@@ -173,31 +192,41 @@
 ;;!! class Foo {}
 ;;!  ^^^^^^^^^^^^
 (class_declaration
-  name: (identifier) @className
+  name: (identifier) @name
   body: (_
     "{" @interior.start.endOf
     "}" @interior.end.startOf
   )
 ) @class @type @_.domain
 
-;; Treat interior of all bodies as iteration scopes for class and classname, eg
-;;!! private static void foo() {   }
-;;!                             ***
-(_
+(class_declaration
   body: (_
-    "{" @class.iteration.start.endOf @className.iteration.start.endOf
-    "}" @class.iteration.end.startOf @className.iteration.end.startOf
+    "{" @class.iteration.start.endOf @name.iteration.start.endOf @statement.iteration.start.endOf
+    "}" @class.iteration.end.startOf @name.iteration.end.startOf @statement.iteration.end.startOf
   )
 )
 
-(
-  (_
-    body: (_
-      "{" @interior.start.endOf
-      "}" @interior.end.startOf
-    )
-  ) @_.domain
-  (#not-type? @_.domain try_statement)
+(class_declaration
+  body: (_
+    "{" @name.iteration.start.endOf @value.iteration.start.endOf @type.iteration.start.endOf
+    "}" @name.iteration.end.startOf @value.iteration.end.startOf @type.iteration.end.startOf
+  )
+)
+
+;;!! interface IFoo {}
+;;!  ^^^^^^^^^^^^^^^^^
+(interface_declaration
+  body: (_
+    "{" @interior.start.endOf
+    "}" @interior.end.startOf
+  )
+) @type @interior.domain
+
+(interface_declaration
+  body: (_
+    "{" @statement.iteration.start.endOf @name.iteration.start.endOf @type.iteration.start.endOf
+    "}" @statement.iteration.end.startOf @name.iteration.end.startOf @type.iteration.end.startOf
+  )
 )
 
 ;;!! "Hello world"
@@ -222,7 +251,7 @@
 ;;!! () => 2;
 ;;!        ^
 (lambda_expression
-  body: (_) @value @interior
+  body: (_) @value
   (#not-type? @value block initializer_expression)
 ) @_.domain
 
@@ -244,23 +273,23 @@
 
 [
   (delegate_declaration
-    name: (_) @functionName
+    name: (_) @name
   )
   (local_function_statement
-    name: (_) @functionName
+    name: (_) @name
   )
   (method_declaration
-    name: (_) @functionName
+    name: (_) @name
   )
   (constructor_declaration
-    name: (_) @functionName
+    name: (_) @name
   )
-] @namedFunction @functionName.domain
+] @namedFunction @name.domain
 
 (class_declaration
   body: (_
-    "{" @namedFunction.iteration.start.endOf @functionName.iteration.start.endOf
-    "}" @namedFunction.iteration.end.startOf @functionName.iteration.end.startOf
+    "{" @namedFunction.iteration.start.endOf @name.iteration.start.endOf
+    "}" @namedFunction.iteration.end.startOf @name.iteration.end.startOf
   )
 )
 
@@ -280,17 +309,28 @@
   )
 ] @_.domain
 
+;;!! switch(value) { }
+;;!                 ^
 (switch_statement
-  (tuple_expression) @private.switchStatementSubject
+  (switch_body
+    "{" @interior.start.endOf
+    "}" @interior.end.startOf
+  )
 ) @_.domain
 
 (switch_statement
-  value: (_) @private.switchStatementSubject
+  (tuple_expression) @value
+) @_.domain
+
+(switch_statement
+  value: (_) @value
 ) @_.domain
 
 (_
   condition: (_) @condition
+  (#not-parent-type? @condition if_statement)
 ) @_.domain
+
 (while_statement
   .
   (_) @condition
@@ -347,7 +387,7 @@
     "{" @branch.iteration.start.endOf @condition.iteration.start.endOf
     "}" @branch.iteration.end.startOf @condition.iteration.end.startOf
   )
-)
+) @branch.iteration.domain
 
 (object_creation_expression
   initializer: (_) @map @list
@@ -377,6 +417,7 @@
     left: (_) @collectionKey
   ) @_.domain
 )
+
 (initializer_expression
   "{" @collectionKey.iteration.start.endOf @value.iteration.start.endOf
   "}" @collectionKey.iteration.end.startOf @value.iteration.end.startOf
@@ -384,58 +425,52 @@
 
 ;;!! String aaa;
 ;;!         ^^^
-(variable_declaration
-  (variable_declarator
-    (identifier) @name
+(_
+  (variable_declaration
+    type: (_) @type
+    (variable_declarator
+      (identifier) @name
+    )
   )
 ) @_.domain
 
 ;;!! String aaa = "bbb";
 ;;!         ^^^
-(variable_declaration
-  (variable_declarator
-    (identifier) @name @value.leading.endOf
-    (equals_value_clause
-      (_) @value
+(_
+  (variable_declaration
+    type: (_) @type
+    (variable_declarator
+      (identifier) @name @value.leading.endOf
+      (equals_value_clause
+        (_) @value
+      )
     )
   )
 ) @_.domain
-
-(
-  (variable_declarator
-    (identifier) @name
-  ) @_.domain
-  (#not-parent-type? @_.domain variable_declaration)
-)
-
-(
-  (variable_declarator
-    (identifier) @name @value.leading.endOf
-    (equals_value_clause
-      (_) @value
-    )
-  ) @_.domain
-  (#not-parent-type? @_.domain variable_declaration)
-)
 
 ;;!! aaa = "bbb";
 ;;!  ^^^
 ;;!! foo = 2;
 ;;!        ^
-(assignment_expression
-  left: (_) @name @value.leading.endOf
-  right: (_) @value
-) @_.domain
+(_
+  (assignment_expression
+    left: (_) @name @value.leading.endOf
+    right: (_) @value
+  ) @_.domain.start
+  .
+  ";"? @_.domain.end
+)
 
 (_
   name: (_) @name
+  (#not-parent-type? @name catch_declaration)
 ) @_.domain
 
 (
   (_
     type: (_) @type
   ) @_.domain
-  (#not-type? @_.domain cast_expression)
+  (#not-type? @_.domain catch_declaration cast_expression variable_declaration)
 )
 
 ;;!! (int)5.5;
@@ -447,11 +482,19 @@
 ) @_.domain
 
 ;;!! enum Foo {}
-;;!! interface IFoo {}
-[
-  (enum_declaration)
-  (interface_declaration)
-] @type
+(enum_declaration
+  body: (_
+    "{" @interior.start.endOf @name.iteration.start.endOf @value.iteration.start.endOf
+    "}" @interior.end.startOf @name.iteration.end.startOf @value.iteration.end.startOf
+  )
+) @type @interior.domain
+
+;;!! bar = 0
+;;!        ^
+(enum_member_declaration
+  name: (_) @value.leading.endOf
+  value: (_) @value
+) @_.domain
 
 ;; Dictionary<string, int> values;
 ;;!           ^^^^^^  ^^^
@@ -533,14 +576,38 @@
   ")" @name.iteration.end.startOf @value.iteration.end.startOf @type.iteration.end.startOf
 )
 
-;; Treat interior of all bodies as iteration scopes for `name`, eg
-;;!! void foo() {   }
-;;!              ^^^
+;;!! int foo, bar;
+;;!      ^^^  ^^^
+(
+  (variable_declaration
+    type: (_)
+    (variable_declarator)? @_.leading.endOf
+    .
+    (variable_declarator) @collectionItem
+    .
+    (variable_declarator)? @_.trailing.startOf
+  ) @_dummy
+  (#single-or-multi-line-delimiter! @collectionItem @_dummy ", " ",\n")
+)
+
+;;!! int foo, bar;
+;;!      ^^^^^^^^
+;;!  -------------
 (_
-  body: (_
-    "{" @name.iteration.start.endOf @value.iteration.start.endOf @type.iteration.start.endOf
-    "}" @name.iteration.end.startOf @value.iteration.end.startOf @type.iteration.end.startOf
-  )
+  (variable_declaration
+    type: (_)
+    .
+    (_) @collectionItem.iteration.start.startOf
+  ) @collectionItem.iteration.end.endOf
+) @collectionItem.iteration.domain
+
+;;!! catch(Exception ex) {}
+;;!        ^^^^^^^^^^^^
+;;!        ^^^^^^^^^
+;;!                  ^^
+(catch_declaration
+  type: (_) @argumentOrParameter.start @type @_.domain.start
+  name: (_) @argumentOrParameter.end @name @_.domain.end
 )
 
 operator: [
@@ -552,15 +619,18 @@ operator: [
   ">="
   ">>"
 ] @disqualifyDelimiter
+
 (assignment_operator
   [
     "<<="
     ">>="
   ] @disqualifyDelimiter
 )
+
 (lambda_expression
   "=>" @disqualifyDelimiter
 )
+
 (member_access_expression
   "->" @disqualifyDelimiter
 )
