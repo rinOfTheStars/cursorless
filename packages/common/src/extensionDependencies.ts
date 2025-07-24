@@ -5,7 +5,7 @@ export const extensionDependencies = [
   // Register necessary language-IDs for tests
   "scala-lang.scala", // scala
   "mrob95.vscode-talonscript", // talon
-  //"jrieken.vscode-tree-sitter-query", // scm TODO: UNCOMMENT THIS WHEN PUBLISHED TO OPENVSX!
+  "jrieken.vscode-tree-sitter-query", // scm
   "mathiasfrohlich.kotlin", // kotlin
 
   "geequlim.godot-tools", // gdscript (and potentially other godot-related langs if they get tree-sitter parsers!)
