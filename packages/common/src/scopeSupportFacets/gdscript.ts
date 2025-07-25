@@ -8,7 +8,6 @@ export const gdscriptScopeSupport: LanguageScopeSupportFacetMap = {
     // supported (implemented)
     anonymousFunction: supported,
 
-    statement: supported,
     "statement.class": supported,
     "statement.iteration.block": supported,
     "statement.iteration.document": supported,
@@ -24,14 +23,9 @@ export const gdscriptScopeSupport: LanguageScopeSupportFacetMap = {
     class: unsupported,
     "class.iteration.block": unsupported, 
     "class.iteration.document": unsupported,
-
-    className: unsupported,
-    "className.iteration.document": unsupported,
-    "className.iteration.block": unsupported,
      
     namedFunction: unsupported,
     "namedFunction.method": unsupported,
-    "namedFunction.method.iteration.class": unsupported,
     //"namedFunction.constructor": unsupported,  -- should this be supported? constructors are always named _init or _static_init
     "namedFunction.iteration.document": unsupported,
 
@@ -42,5 +36,4 @@ export const gdscriptScopeSupport: LanguageScopeSupportFacetMap = {
     endTag: notApplicable,
     tags: notApplicable,
 
-    "namedFunction.iteration.block": notApplicable, 
 };
